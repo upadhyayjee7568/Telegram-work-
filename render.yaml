@@ -1,0 +1,23 @@
+services:
+  - type: worker
+    name: fmea-telegram-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r fmea_bot/requirements.txt
+    startCommand: python fmea_bot/bot.py
+    autoDeploy: true
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: CHANNEL_USERNAME
+        value: https://t.me/FMEA1237802VHKV
+      - key: CHANNEL_LINK
+        value: https://t.me/FMEA1237802VHKV
+      - key: SUPPORT_LINK
+        value: https://t.me/amanjee7568
+      - key: ADMIN_IDS
+        value: 9234906001
+      - key: ADMIN_USERNAMES
+        value: "@amanjee7568,@amanjee"
+      - key: TIMEZONE
+        value: Asia/Kolkata
