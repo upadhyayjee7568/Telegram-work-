@@ -31,7 +31,10 @@ python bot.py
 ## Security
 - BOT token ko kabhi code/file me hardcode karke git me push na karein.
 - Agar token chat/history me share ho gaya ho to turant regenerate karein.
+<< codex/update-telegram-bot-and-deploy-to-github-fdh5b8
 
 
 ### Render plan error fix
 If you see `service type is not available for this plan`, this repo now uses a **web** service blueprint (not worker) compatible with lower plans.
+=======
+>> main

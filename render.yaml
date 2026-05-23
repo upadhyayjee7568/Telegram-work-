@@ -1,4 +1,5 @@
 services:
+<< codex/update-telegram-bot-and-deploy-to-github-fdh5b8
   - type: web
     name: fmea-telegram-bot-web
     env: python
@@ -7,6 +8,15 @@ services:
     startCommand: python fmea_bot/run_render.py
     autoDeploy: true
     healthCheckPath: /healthz
+==
+  - type: worker
+    name: fmea-telegram-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r fmea_bot/requirements.txt
+    startCommand: python fmea_bot/bot.py
+    autoDeploy: true
+>> main
     envVars:
       - key: BOT_TOKEN
         sync: false
