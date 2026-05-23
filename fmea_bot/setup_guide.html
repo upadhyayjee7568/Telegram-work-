@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FMEA Bot - Complete Setup Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #FFD700, #FF8C00, #FFD700);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(255,215,0,0.5);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #000;
+            font-weight: 900;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p { color: #333; font-size: 1.1em; margin-top: 5px; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+
+        .alert-box {
+            background: linear-gradient(135deg, #ff6b35, #f7c59f);
+            border-radius: 15px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            border-left: 6px solid #ff4500;
+            box-shadow: 0 5px 20px rgba(255,107,53,0.4);
+        }
+
+        .alert-box h2 { color: #000; font-size: 1.4em; margin-bottom: 10px; }
+        .alert-box p { color: #222; font-size: 1em; line-height: 1.6; }
+
+        .step-card {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 25px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(255,215,0,0.2);
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #FFD700, #FF8C00);
+            border-radius: 50%;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 15px;
+        }
+
+        .step-card h2 {
+            font-size: 1.5em;
+            color: #FFD700;
+            margin-bottom: 15px;
+        }
+
+        .step-card p { color: #ddd; line-height: 1.8; margin-bottom: 10px; }
+
+        .code-block {
+            background: #000;
+            border: 1px solid #333;
+            border-left: 4px solid #FFD700;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block .comment { color: #6A9955; }
+        .code-block .string { color: #CE9178; }
+        .code-block .keyword { color: #569CD6; }
+        .code-block .number { color: #B5CEA8; }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #FFD700;
+            color: #000;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .copy-btn:hover { background: #FF8C00; color: #fff; }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature-item {
+            background: rgba(255,215,0,0.1);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .feature-item .icon { font-size: 2em; margin-bottom: 8px; }
+        .feature-item h4 { color: #FFD700; font-size: 0.95em; }
+        .feature-item p { color: #bbb; font-size: 0.8em; margin-top: 5px; }
+
+        .commands-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .commands-table th {
+            background: linear-gradient(90deg, #FFD700, #FF8C00);
+            color: #000;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .commands-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #ddd;
+        }
+
+        .commands-table tr:nth-child(even) td { background: rgba(255,255,255,0.05); }
+        .commands-table tr:hover td { background: rgba(255,215,0,0.1); }
+
+        .cmd { color: #FFD700; font-family: monospace; font-weight: bold; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .badge-admin { background: #ff4444; color: #fff; }
+        .badge-user { background: #00cc44; color: #fff; }
+        .badge-all { background: #4488ff; color: #fff; }
+
+        .warning-box {
+            background: rgba(255, 60, 0, 0.15);
+            border: 1px solid #ff6b35;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+
+        .warning-box h4 { color: #ff6b35; margin-bottom: 8px; }
+        .warning-box p, .warning-box li { color: #ffb599; font-size: 0.9em; line-height: 1.6; }
+
+        .success-box {
+            background: rgba(0, 200, 83, 0.1);
+            border: 1px solid #00c853;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+
+        .success-box h4 { color: #00e676; margin-bottom: 8px; }
+        .success-box p, .success-box li { color: #b9f6ca; font-size: 0.9em; line-height: 1.6; }
+
+        .tg-mockup {
+            background: #17212b;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid #2b5278;
+        }
+
+        .tg-message {
+            background: #2b5278;
+            border-radius: 12px 12px 12px 0;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            max-width: 85%;
+            font-size: 0.9em;
+            color: #fff;
+            line-height: 1.5;
+        }
+
+        .tg-message.admin {
+            background: #1e3a1e;
+            border-radius: 12px 12px 0 12px;
+            margin-left: auto;
+            border: 1px solid #2d5a2d;
+        }
+
+        .tg-btn {
+            display: inline-block;
+            background: #2b5278;
+            border: 1px solid #3d7ab5;
+            border-radius: 6px;
+            padding: 8px 15px;
+            margin: 3px;
+            font-size: 0.85em;
+            color: #7bc4f9;
+            cursor: pointer;
+        }
+
+        .tg-buttons { text-align: center; margin-top: 5px; }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: rgba(0,0,0,0.3);
+            margin-top: 30px;
+            border-top: 1px solid rgba(255,215,0,0.3);
+        }
+
+        .footer p { color: #888; }
+        .footer .gold { color: #FFD700; font-weight: bold; }
+
+        ul { padding-left: 20px; }
+        ul li { color: #ddd; line-height: 1.8; margin-bottom: 5px; }
+        ul li::marker { color: #FFD700; }
+
+        .highlight { color: #FFD700; font-weight: bold; }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.8em; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+
+<div class="header">
+    <h1>💰 Free Money Earning Adda Bot</h1>
+    <p>Professional Telegram Bot - Complete Setup Guide | Admin: @amanjee7568</p>
+</div>
+
+<div class="container">
+
+    <!-- Alert Box -->
+    <div class="alert-box">
+        <h2>⚡ Yeh Guide Padhna Zaroori Hai!</h2>
+        <p>Aapka <strong>FMEA Bot</strong> ready hai! Sirf <strong>3 simple steps</strong> mein apna bot live kar sakte ho. Neeche sab kuch detail mein explain kiya gaya hai. Ek step bhi miss mat karna!</p>
+    </div>
+
+    <!-- Features Overview -->
+    <div class="step-card">
+        <h2>🌟 Bot Features - Kya Kya Milega Aapko</h2>
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="icon">📤</div>
+                <h4>Broadcast System</h4>
+                <p>Sabhi users ko ek saath message bhejo</p>
+            </div>
+            <div class="feature-item">
+                <div class="icon">📅</div>
+                <h4>Auto Scheduling</h4>
+                <p>Posts schedule karo, automatic post hoga</p>
+            </div>
+            <div class="feature-item">
+                <div class="icon">📢</div>
+                <h4>Channel Posts</h4>
+                <p>Direct channel mein auto post karo</p>
+            </div>
+            <div class="feature-item">
+                <div class="icon">👥</div>
+                <h4>Referral System</h4>
+                <p>Users refer karein, points kamayein</p>
+            </div>
+            <div class="feature-item">
+                <div class="icon">📊</div>
+                <h4>Live Analytics</h4>
+                <p>Real-time user stats dekhein</p>
+            </div>
+            <div class="feature-item">
+                <div class="icon">🔥</div>
+                <h4>Auto Promotion</h4>
+                <p>Automatic promo messages</p>
+            </div>
+            <div class="feature-item">
+                <div class="icon">⚙️</div>
+                <h4>Settings Control</h4>
+                <p>Har feature on/off toggle karo</p>
+            </div>
+            <div class="feature-item">
+                <div class="icon">💡</div>
+                <h4>Content Library</h4>
+                <p>Posts ka content store karo</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 1: BotFather -->
+    <div class="step-card">
+        <div class="step-number">1</div>
+        <h2>🤖 Step 1: Telegram Bot Banao (BotFather)</h2>
+        
+        <p>Pehle aapko Telegram pe apna bot banana hoga. Ye bilkul free hai aur sirf 2 minute lagenge.</p>
+        
+        <div class="tg-mockup">
+            <div style="color: #888; font-size: 0.85em; margin-bottom: 10px;">📱 Telegram App</div>
+            <div class="tg-message">
+                🤖 <strong>@BotFather</strong><br><br>
+                Isko search karo Telegram mein aur message karo
+            </div>
+            <div class="tg-message admin">
+                /newbot
+            </div>
+            <div class="tg-message">
+                <strong>Choose a name for your bot:</strong>
+            </div>
+            <div class="tg-message admin">
+                Free Money Earning Adda
+            </div>
+            <div class="tg-message">
+                <strong>Choose a username (must end in 'bot'):</strong>
+            </div>
+            <div class="tg-message admin">
+                FreeMoneyEarningBot
+            </div>
+            <div class="tg-message">
+                ✅ Done! Here is your bot token:<br>
+                <code style="color:#FFD700">1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ</code><br><br>
+                ⚠️ Keep your token secret!
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <h4>⚠️ Important Notes:</h4>
+            <ul>
+                <li>BotFather username exactly: <strong>@BotFather</strong> (blue tick wala)</li>
+                <li>Bot token ek lambi string hogi, usse copy karke rakh lo</li>
+                <li>Bot username mein "bot" ya "Bot" end mein hona chahiye</li>
+                <li>Token kisi ke saath share mat karna!</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- STEP 2: Channel Banao -->
+    <div class="step-card">
+        <div class="step-number">2</div>
+        <h2>📢 Step 2: Telegram Channel Banao</h2>
+        
+        <p>Ab "Free Money 💰 Earning Adda" naam ka channel banana hoga:</p>
+
+        <ul style="margin: 15px 0;">
+            <li>Telegram mein <strong>New Channel</strong> create karo</li>
+            <li>Channel name: <strong>Free Money 💰 Earning Adda</strong></li>
+            <li>Type: <strong>Public</strong> rakho (taki zyada log join kar sakein)</li>
+            <li>Username: kuch aisa rakho jaise <strong>@FreeMoneyEarningAdda</strong></li>
+            <li>Channel banane ke baad <strong>Bot ko Admin banao</strong>:
+                <ul>
+                    <li>Channel Settings → Administrators → Add Admin</li>
+                    <li>Apna bot search karo aur add karo</li>
+                    <li>"Post Messages" permission ON karo</li>
+                </ul>
+            </li>
+        </ul>
+
+        <div class="success-box">
+            <h4>✅ Channel Setup Complete Hone ke Baad:</h4>
+            <p>Channel ka username note kar lo (e.g., @FreeMoneyEarningAdda)</p>
+            <p>Ye username config.py mein daalni hai</p>
+        </div>
+    </div>
+
+    <!-- STEP 3: Apni Telegram ID -->
+    <div class="step-card">
+        <div class="step-number">3</div>
+        <h2>🆔 Step 3: Apni Telegram Numeric ID Pata Karo</h2>
+        
+        <p>Admin control ke liye aapki Telegram User ID chahiye (username nahi, numeric ID):</p>
+
+        <div class="tg-mockup">
+            <div class="tg-message">
+                🤖 <strong>@userinfobot</strong> ya <strong>@getmyid_bot</strong> pe jao<br><br>
+                /start bhejo → Ye aapki numeric ID dikhayega
+            </div>
+            <div class="tg-message" style="background: #1e3a5f;">
+                Your ID: <strong style="color:#FFD700">987654321</strong><br>
+                Username: @amanjee7568
+            </div>
+        </div>
+
+        <p style="margin-top:10px;">Yeh number note kar lo. Ye aapki Admin ID hai.</p>
+    </div>
+
+    <!-- STEP 4: config.py Edit -->
+    <div class="step-card">
+        <div class="step-number">4</div>
+        <h2>⚙️ Step 4: config.py File Edit Karo</h2>
+        
+        <p>Bot folder mein <code style="color:#FFD700">config.py</code> file kholo aur yeh 3 cheezein update karo:</p>
+
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <span class="comment"># ← Yahan apna bot token daalo</span><br>
+            <span class="keyword">BOT_TOKEN</span> = <span class="string">"1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"</span><br><br>
+            <span class="comment"># ← Apne channel ka username daalo</span><br>
+            <span class="keyword">CHANNEL_USERNAME</span> = <span class="string">"@FreeMoneyEarningAdda"</span><br><br>
+            <span class="comment"># ← Apni numeric Telegram ID daalo</span><br>
+            <span class="keyword">ADMIN_IDS</span> = [<span class="number">987654321</span>]  <span class="comment"># @amanjee7568 ki ID</span>
+        </div>
+
+        <div class="warning-box">
+            <h4>⚠️ Dhyan Rakhna:</h4>
+            <ul>
+                <li>Token quotes ke andar rakho: <code>"token_yahan"</code></li>
+                <li>Channel username @ ke saath: <code>"@channelname"</code></li>
+                <li>Admin ID ek number hai, quotes nahi: <code>987654321</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- STEP 5: Run Bot -->
+    <div class="step-card">
+        <div class="step-number">5</div>
+        <h2>🚀 Step 5: Bot Chalaao</h2>
+        
+        <p>Sab kuch configure karne ke baad bot run karo:</p>
+
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <span class="comment"># 1. Bot folder mein jao</span><br>
+            cd fmea_bot<br><br>
+            <span class="comment"># 2. Dependencies install karo (sirf pehli baar)</span><br>
+            pip install -r requirements.txt<br><br>
+            <span class="comment"># 3. Configuration test karo</span><br>
+            python test_bot.py<br><br>
+            <span class="comment"># 4. Bot start karo</span><br>
+            python bot.py
+        </div>
+
+        <div class="success-box">
+            <h4>✅ Bot Successful Start Hone par Dikhega:</h4>
+            <p>🚀 FREE MONEY EARNING ADDA BOT - Starting...</p>
+            <p>✅ Database initialized successfully!</p>
+            <p>✅ Bot started successfully!</p>
+            <p>🤖 Bot is running... Press Ctrl+C to stop</p>
+        </div>
+    </div>
+
+    <!-- Admin Commands -->
+    <div class="step-card">
+        <h2>👑 Admin Commands - @amanjee7568 ke liye</h2>
+        <p>Yeh sab commands sirf aap use kar sakte ho (admin ID se):</p>
+
+        <table class="commands-table">
+            <thead>
+                <tr>
+                    <th>Command</th>
+                    <th>Kya Karta Hai</th>
+                    <th>Access</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="cmd">/admin</span></td>
+                    <td>🎛️ Admin Control Panel kholta hai - sab kuch yahan se control karo</td>
+                    <td><span class="badge badge-admin">Admin Only</span></td>
+                </tr>
+                <tr>
+                    <td><span class="cmd">/start</span></td>
+                    <td>🤖 Bot start karo, welcome message milega</td>
+                    <td><span class="badge badge-all">Everyone</span></td>
+                </tr>
+                <tr>
+                    <td><span class="cmd">/help</span></td>
+                    <td>📋 Help aur commands list dekhne ke liye</td>
+                    <td><span class="badge badge-all">Everyone</span></td>
+                </tr>
+                <tr>
+                    <td><span class="cmd">/menu</span></td>
+                    <td>📱 Main menu open karo</td>
+                    <td><span class="badge badge-all">Everyone</span></td>
+                </tr>
+                <tr>
+                    <td><span class="cmd">/stats</span></td>
+                    <td>📊 Statistics dekhein (admin ko full stats, user ko personal stats)</td>
+                    <td><span class="badge badge-all">Everyone</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Admin Panel Features -->
+    <div class="step-card">
+        <h2>🎛️ Admin Control Panel - Detailed Guide</h2>
+        <p><code>/admin</code> command se yeh panel milega:</p>
+
+        <div class="tg-mockup">
+            <div class="tg-message">
+                <strong>👑 FMEA Admin Control Panel</strong><br>
+                ━━━━━━━━━━━━━━━━━━━━━━<br>
+                📊 Live Statistics:<br>
+                ├ 👥 Total Users: 152<br>
+                ├ ✅ Active Users: 148<br>
+                ├ 🆕 Today's Joins: 12<br>
+                └ 📤 Total Broadcasts: 5<br>
+                ━━━━━━━━━━━━━━━━━━━━━━
+                <div class="tg-buttons">
+                    <div class="tg-btn">📤 Broadcast</div><div class="tg-btn">📅 Schedule</div>
+                    <div class="tg-btn">📢 Channel Post</div><div class="tg-btn">📚 Content</div>
+                    <div class="tg-btn">👥 Users</div><div class="tg-btn">📊 Stats</div>
+                    <div class="tg-btn">⚙️ Settings</div><div class="tg-btn">📋 Posts</div>
+                    <div class="tg-btn">🔥 Auto Promo</div><div class="tg-btn">💡 Quick Post</div>
+                </div>
+            </div>
+        </div>
+
+        <table class="commands-table" style="margin-top:20px;">
+            <thead>
+                <tr><th>Button</th><th>Kya Karta Hai</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>📤 <strong>Broadcast</strong></td>
+                    <td>Message type karo → Sabhi registered users ko ek saath bhejo</td>
+                </tr>
+                <tr>
+                    <td>📅 <strong>Schedule Post</strong></td>
+                    <td>Time select karo → Content daalo → Auto scheduled! Channel pe automatically post hoga</td>
+                </tr>
+                <tr>
+                    <td>📢 <strong>Channel Post</strong></td>
+                    <td>Directly channel mein post karo abhi</td>
+                </tr>
+                <tr>
+                    <td>💡 <strong>Quick Post</strong></td>
+                    <td>Ek saath channel + sabhi users ko post karo</td>
+                </tr>
+                <tr>
+                    <td>🔥 <strong>Auto Promo</strong></td>
+                    <td>Ready-made promotional messages choose karo aur bhejo</td>
+                </tr>
+                <tr>
+                    <td>👥 <strong>Users</strong></td>
+                    <td>Users manage karo - block/unblock, stats dekhna, export</td>
+                </tr>
+                <tr>
+                    <td>⚙️ <strong>Settings</strong></td>
+                    <td>Auto post, welcome message, referral system - sab on/off karo</td>
+                </tr>
+                <tr>
+                    <td>📊 <strong>Statistics</strong></td>
+                    <td>Detailed analytics - users, broadcasts, growth</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Auto Post System -->
+    <div class="step-card">
+        <h2>⏰ Auto Post System - Kaise Kaam Karta Hai</h2>
+        
+        <p>Bot automatically ye kaam karta hai <strong>bina aapko kuch kiye</strong>:</p>
+
+        <ul style="margin: 15px 0;">
+            <li>🌅 <strong>Subah 9 AM</strong> - Daily earning tip channel pe auto post</li>
+            <li>☀️ <strong>Dopahar 2 PM</strong> - Daily update channel pe auto post</li>
+            <li>🌙 <strong>Raat 8 PM</strong> - Daily tip channel pe auto post</li>
+            <li>🔥 <strong>Sham 7 PM</strong> - Promotional message sabhi users ko</li>
+        </ul>
+
+        <div class="success-box">
+            <h4>✅ Auto Post Customize Karna:</h4>
+            <ul>
+                <li><code>config.py</code> mein <code>AUTO_POST_TIMES</code> change karo</li>
+                <li>Admin panel ke Content Library mein apna content add karo</li>
+                <li>Bot automatically woh content use karega</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Channel Post Flow -->
+    <div class="step-card">
+        <h2>📢 Channel Mein Post Kaise Karo (Admin se)</h2>
+
+        <div class="tg-mockup">
+            <p style="color:#888; font-size:0.85em; margin-bottom:10px;">📱 Example Flow:</p>
+            <div class="tg-message admin">/admin</div>
+            <div class="tg-message">👑 Admin Panel → [📢 Channel Post] button click karo</div>
+            <div class="tg-message">
+                📢 Post to Channel<br>
+                Channel mein post karne ke liye message type karo:
+                <div class="tg-buttons">
+                    <div class="tg-btn">❌ Cancel</div>
+                </div>
+            </div>
+            <div class="tg-message admin">
+                🔥 Aaj ka Special Tip!<br>
+                Online paise kamane ka sabse aasan tarika...
+            </div>
+            <div class="tg-message">✅ Channel pe post ho gaya!</div>
+        </div>
+    </div>
+
+    <!-- Hosting Guide -->
+    <div class="step-card">
+        <div class="step-number">6</div>
+        <h2>🌐 Step 6: Bot 24/7 Chalane ke Liye (Hosting)</h2>
+        
+        <p>Bot sirf tab kaam karta hai jab PC/phone on ho. 24/7 ke liye free hosting use karo:</p>
+
+        <h3 style="color:#FFD700; margin: 15px 0 10px;">🆓 Option 1: Railway.app (Recommended - Free)</h3>
+        <ul>
+            <li>railway.app pe jao → Free account banao</li>
+            <li>GitHub pe bot ka code upload karo</li>
+            <li>Railway mein "New Project" → GitHub se import karo</li>
+            <li>Environment variables mein <code>BOT_TOKEN</code> add karo</li>
+            <li>Deploy karo - 24/7 free!</li>
+        </ul>
+
+        <h3 style="color:#FFD700; margin: 15px 0 10px;">🆓 Option 2: Render.com (Free)</h3>
+        <ul>
+            <li>render.com pe free account banao</li>
+            <li>New "Background Worker" create karo</li>
+            <li>GitHub repo connect karo</li>
+            <li>Build command: <code>pip install -r requirements.txt</code></li>
+            <li>Start command: <code>python bot.py</code></li>
+        </ul>
+
+        <div class="warning-box">
+            <h4>⚠️ Note:</h4>
+            <p>Free hosting pe bot thoda slow ho sakta hai, par basic kaam karta hai. Professional use ke liye ₹200-500/month ka VPS/server le sakte ho (DigitalOcean, Hetzner, etc.)</p>
+        </div>
+    </div>
+
+    <!-- File Structure -->
+    <div class="step-card">
+        <h2>📁 Bot Files ka Structure</h2>
+        <div class="code-block">
+fmea_bot/<br>
+├── <span class="keyword">bot.py</span>          <span class="comment">← Main bot file (yahi chalana hai)</span><br>
+├── <span class="keyword">config.py</span>       <span class="comment">← ⭐ Yahan apna token/ID daalo</span><br>
+├── <span class="keyword">database.py</span>     <span class="comment">← Database functions</span><br>
+├── <span class="keyword">keyboards.py</span>    <span class="comment">← Buttons & menus</span><br>
+├── <span class="keyword">messages.py</span>     <span class="comment">← Content & templates</span><br>
+├── <span class="keyword">test_bot.py</span>     <span class="comment">← Test karne ke liye</span><br>
+├── <span class="keyword">setup.sh</span>        <span class="comment">← Auto setup script</span><br>
+└── <span class="keyword">requirements.txt</span> <span class="comment">← Dependencies list</span>
+        </div>
+    </div>
+
+    <!-- Help -->
+    <div class="step-card">
+        <h2>🆘 Problem Aane Par Kya Karein</h2>
+        <table class="commands-table">
+            <thead>
+                <tr><th>Problem</th><th>Solution</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>"Unauthorized" error</td>
+                    <td>BOT_TOKEN galat hai, dobara check karo</td>
+                </tr>
+                <tr>
+                    <td>Channel post nahi ho raha</td>
+                    <td>Bot ko channel ka Admin banao with Post permission</td>
+                </tr>
+                <tr>
+                    <td>/admin kaam nahi kar raha</td>
+                    <td>Apni sahi numeric ID ADMIN_IDS mein daalo</td>
+                </tr>
+                <tr>
+                    <td>"Chat not found" error</td>
+                    <td>CHANNEL_USERNAME mein @ lagana mat bhoolo</td>
+                </tr>
+                <tr>
+                    <td>Bot respond nahi kar raha</td>
+                    <td>python bot.py phir se run karo</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<div class="footer">
+    <p class="gold">💰 Free Money Earning Adda (FMEA) Bot - Version 2.0 Pro</p>
+    <p style="margin-top:10px; color:#666;">Admin: @amanjee7568 | All Rights Reserved</p>
+    <p style="margin-top:5px; color:#444;">Built with ❤️ for maximum earnings!</p>
+</div>
+
+<script>
+function copyCode(btn) {
+    const codeBlock = btn.parentElement;
+    const text = codeBlock.innerText.replace('Copy\n', '').trim();
+    navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+}
+</script>
+</body>
+</html>
