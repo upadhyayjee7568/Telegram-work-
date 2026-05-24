@@ -28,6 +28,7 @@ def main_menu_keyboard(channel_link, support_link):
             InlineKeyboardButton("💬 Support", url=support_link),
         ],
         [
+            InlineKeyboardButton("❓ Ask Question", callback_data="ask_question"),
             InlineKeyboardButton("ℹ️ About FMEA", callback_data="about_fmea"),
         ]
     ]
@@ -89,6 +90,7 @@ def admin_main_keyboard():
             InlineKeyboardButton("💡 Quick Post", callback_data="admin_quick_post"),
         ],
         [
+            InlineKeyboardButton("🧾 User Questions", callback_data="admin_questions"),
             InlineKeyboardButton("🔙 Exit Admin", callback_data="main_menu"),
         ]
     ]

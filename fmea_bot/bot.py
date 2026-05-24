@@ -44,6 +44,16 @@ logger = logging.getLogger(__name__)
 
 IST = pytz.timezone(TIMEZONE)
 
+ codex/set-bot_token-environment-variable-3kjrzt
+FAQ_RESPONSES = {
+    "how to earn": "Start with freelancing, affiliate, and skill-based methods. Avoid guaranteed-income scams.",
+    "is it free": "Yes, bot usage is free. We only share guidance and verified opportunities.",
+    "referral": "Use menu > Refer & Earn to get your referral link and points.",
+    "withdraw": "This bot shares earning guidance. It does not hold money/wallet balances.",
+}
+
+
+ main
 async def _on_startup(app: Application) -> None:
     """Ensure long-polling can start by removing any existing webhook."""
     try:
@@ -364,6 +374,14 @@ _Tap link to copy_ 👆
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=back_keyboard()
         )
+
+    elif data == "ask_question":
+        context.user_data["awaiting_user_question"] = True
+        await query.message.edit_text(
+            "❓ *Ask Your Question*\n\nApna sawal type kijiye. Bot pehle instant answer dega; zarurat par admin ko forward hoga.",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=cancel_keyboard()
+        )
     
     elif data == "verify_join":
         is_member = await check_membership(context.bot, user.id)
@@ -402,6 +420,28 @@ _Tap link to copy_ 👆
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=admin_main_keyboard()
         )
+
+    elif data == "admin_questions":
+        if not is_admin(user.id, user.username):
+            await query.answer("❌ Access Denied!", show_alert=True)
+            return
+        qs = get_open_questions(10)
+        if not qs:
+            await query.message.edit_text(
+                "✅ *No open questions*",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]])
+            )
+        else:
+            q_text = "🧾 *Open User Questions*\n\n"
+            for q in qs[:10]:
+                q_text += f"• #{q['id']} - user `{q['user_id']}`\n{q['question'][:80]}\n\n"
+            q_text += "Reply format in chat: `/reply <id> your answer`"
+            await query.message.edit_text(
+                q_text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]])
+            )
     
     elif data == "admin_stats":
         if not is_admin(user.id, user.username):
@@ -922,12 +962,71 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
     
+    # User question mode
+    if context.user_data.get('awaiting_user_question'):
+        context.user_data['awaiting_user_question'] = False
+        low = text.lower()
+        answer = None
+        for k, v in FAQ_RESPONSES.items():
+            if k in low:
+                answer = v
+                break
+
+        if answer:
+            await message.reply_text(
+                f"✅ *Quick Answer:*\n{answer}\n\nNeed more help? Tap Ask Question again.",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
+            )
+        else:
+            qid = add_user_question(user.id, user.username, text)
+            await message.reply_text(
+                f"🧾 Aapka question admin queue mein add ho gaya (ID: *{qid}*).\nHum genuine answer ke saath jaldi reply karenge.",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
+            )
+            for admin_id in ADMIN_IDS:
+                try:
+                    await context.bot.send_message(admin_id, f"🆕 User Question #{qid}\nUser: `{user.id}` (@{user.username})\nQ: {text}", parse_mode=ParseMode.MARKDOWN)
+                except:
+                    pass
+        return
+
     # Regular user - show menu
     await message.reply_text(
         f"👋 *Kya chahiye aapko?*\n\nNeeche se option choose karo:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
     )
+
+async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['awaiting_user_question'] = True
+    await update.message.reply_text(
+        "❓ Apna question type kijiye. Genuine jawab diya jayega; complex case admin ko forward hoga.",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("Usage: /reply <question_id> <message>")
+        return
+    try:
+        qid = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Invalid question id")
+        return
+    reply_text = " ".join(context.args[1:])
+    q = {item['id']: item for item in get_open_questions(200)}.get(qid)
+    if not q:
+        await update.message.reply_text("Question not found/open")
+        return
+    await context.bot.send_message(q['user_id'], f"📩 *Admin Reply*\n\n{reply_text}", parse_mode=ParseMode.MARKDOWN)
+    close_user_question(qid, reply_text)
+    await update.message.reply_text(f"✅ Replied to question #{qid}")
 
 # ── HELP COMMAND ──────────────────────────────────────────────
 
@@ -1127,6 +1226,8 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("menu", menu_command))
     app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("ask", ask_command))
+    app.add_handler(CommandHandler("reply", reply_command))
     
     # Callback query handler
     app.add_handler(CallbackQueryHandler(button_handler))

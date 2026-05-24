@@ -81,6 +81,20 @@ def init_database():
             added_at TEXT
         )
     ''')
+
+    # User questions queue (for admin follow-up)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT,
+            question TEXT NOT NULL,
+            status TEXT DEFAULT 'open',
+            admin_reply TEXT,
+            created_at TEXT,
+            answered_at TEXT
+        )
+    ''')
     
     # Bot settings
     cursor.execute('''
@@ -354,5 +368,41 @@ def log_broadcast(message, total_sent, total_failed, sent_by, media_type='text',
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', (message, media_type, media_file_id, total_sent, total_failed, 
           sent_by, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+# ── USER QUESTION QUEUE ─────────────────────────────────────
+
+def add_user_question(user_id, username, question):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO user_questions (user_id, username, question, created_at)
+        VALUES (?, ?, ?, ?)
+    ''', (user_id, username, question, datetime.now().isoformat()))
+    qid = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return qid
+
+def get_open_questions(limit=20):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM user_questions WHERE status = 'open'
+        ORDER BY created_at ASC LIMIT ?
+    ''', (limit,))
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def close_user_question(question_id, admin_reply):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE user_questions
+        SET status = 'answered', admin_reply = ?, answered_at = ?
+        WHERE id = ?
+    ''', (admin_reply, datetime.now().isoformat(), question_id))
     conn.commit()
     conn.close()
