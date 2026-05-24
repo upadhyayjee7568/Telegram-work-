@@ -1,8 +1,10 @@
 """Render-compatible launcher with optional bot thread + HTTP health server."""
 from __future__ import annotations
 
+import asyncio
 import os
 import threading
+import traceback
 from flask import Flask
 
 from bot import main as run_bot
@@ -21,7 +23,18 @@ def healthz():
 
 
 def _start_bot() -> None:
-    run_bot()
+    """Run bot in background thread with a dedicated asyncio event loop."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        run_bot()
+    except Exception:
+        traceback.print_exc()
+    finally:
+        try:
+            loop.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
