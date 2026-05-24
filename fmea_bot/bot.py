@@ -77,7 +77,48 @@ async def check_membership(bot: Bot, user_id: int) -> bool:
         member = await bot.get_chat_member(CHANNEL_USERNAME, user_id)
         return member.status not in ['left', 'kicked']
     except:
-        return True  # If can't check, allow access
+        return False
+
+async def check_group_membership(bot: Bot, user_id: int) -> bool:
+    try:
+        member = await bot.get_chat_member(GROUP_USERNAME, user_id)
+        return member.status not in ['left', 'kicked']
+    except:
+        return False
+
+async def _onboarding_status(bot: Bot, user_id: int) -> tuple[bool, bool]:
+    in_channel = await check_membership(bot, user_id)
+    in_group = await check_group_membership(bot, user_id)
+    return in_channel, in_group
+
+async def send_onboarding_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    pending = []
+    if not in_channel:
+        pending.append("1) Channel join karo")
+    if in_channel and not in_group:
+        pending.append("2) Group join karo")
+    if in_channel and in_group:
+        pending.append("3) Bot start complete ✅")
+    text = (
+        "🚫 *Access Restricted*\n\n"
+        "Bot use karne ke liye yeh process complete karna mandatory hai:\n"
+        f"• 1) Channel: {CHANNEL_LINK}\n"
+        f"• 2) Group: {GROUP_LINK}\n"
+        f"• 3) Bot: {BOT_LINK}\n\n"
+        f"⏳ *Pending:* {' | '.join(pending) if pending else 'None'}"
+    )
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("👥 Join Group", url=GROUP_LINK)],
+        [InlineKeyboardButton("🤖 Open Bot", url=BOT_LINK)],
+        [InlineKeyboardButton("✅ Verify", callback_data="verify_join")],
+    ])
+    if update.message:
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+    elif update.callback_query:
+        await update.callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
 
 async def check_group_membership(bot: Bot, user_id: int) -> bool:
     try:
@@ -853,10 +894,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = message.text if message.text else ""
 
     if message.chat.type == "channel":
-        try:
-            await message.reply_text(f"Discussion ke liye group join karein: {GROUP_LINK}")
-        except:
-            pass
         return
 
     if message.chat.type in ("group", "supergroup"):
@@ -900,6 +937,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Force onboarding flow only in private bot chat
+    if message.chat.type == "private":
+        in_channel, in_group = await _onboarding_status(context.bot, user.id)
+        if not (in_channel and in_group) and not is_admin(user.id, user.username):
+            await send_onboarding_notice(update, context)
+            return
     # Force onboarding flow before using bot features
     in_channel, in_group = await _onboarding_status(context.bot, user.id)
     if not (in_channel and in_group) and not is_admin(user.id, user.username):
@@ -1081,9 +1124,19 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
         return
 
-    # Regular user - show menu
+    # Regular user: try quick answer first in private chat
+    if message.chat.type == "private" and text:
+        low = text.lower()
+        for k, v in FAQ_RESPONSES.items():
+            if k in low:
+                await message.reply_text(
+                    f"✅ *Quick Answer:*\n{v}",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
+                )
+                return
     await message.reply_text(
-        f"👋 *Kya chahiye aapko?*\n\nNeeche se option choose karo:",
+        "👋 *Kya chahiye aapko?*\n\nNeeche se option choose karo:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
     )
@@ -1214,6 +1267,12 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user = cmu.new_chat_member.user
         welcome_text = (get_setting("channel_welcome_text") or "🎉 Welcome {name}!").format(name=user.first_name)
         features_text = get_setting("channel_features_text") or ""
+        final_text = (
+            f"{welcome_text}\n\n"
+            f"{features_text}\n\n"
+            f"👥 Pehle group me active rahiye, phir bot use karein:\n{BOT_LINK}\n\n"
+            "💬 Genuine demand ke liye /ask use karein."
+        )
         final_text = f"{welcome_text}\n\n{features_text}\n\n💬 Genuine demand ke liye /ask use karein."
         try:
             await context.bot.send_message(chat_id=cmu.chat.id, text=final_text, parse_mode=ParseMode.MARKDOWN)
