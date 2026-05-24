@@ -7,6 +7,9 @@ services:
     startCommand: python fmea_bot/run_render.py
     autoDeploy: true
     healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
   - type: worker
     name: fmea-telegram-bot
     env: python
@@ -15,6 +18,8 @@ services:
     startCommand: python fmea_bot/bot.py
     autoDeploy: true
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
       - key: BOT_TOKEN
         sync: false
       - key: CHANNEL_USERNAME
