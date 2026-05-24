@@ -848,9 +848,10 @@ _Tap link to copy_ 👆
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     message = update.message
+    if message is None:
+        return
     text = message.text if message.text else ""
 
- codex/fix-indentation-error-in-bot.py
     if message.chat.type == "channel":
         try:
             await message.reply_text(f"Discussion ke liye group join karein: {GROUP_LINK}")
@@ -865,8 +866,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
 
-
- main
     # Group/channel moderation for abusive words
     if message.chat.type in ("group", "supergroup"):
         if not is_admin(user.id, user.username) and text and _contains_blocked_words(text):
