@@ -38,6 +38,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 _raw_channel_username = os.getenv("CHANNEL_USERNAME", "@FMEA1237802VHKV").strip()
 CHANNEL_USERNAME = "@" + _raw_channel_username.rstrip("/").split("/")[-1].lstrip("@") if "t.me/" in _raw_channel_username or _raw_channel_username.startswith("http") else _raw_channel_username
 CHANNEL_LINK = os.getenv("CHANNEL_LINK", "https://t.me/FMEA1237802VHKV")
+GROUP_LINK = os.getenv("GROUP_LINK", "https://t.me/Fmean756800124876")
+_raw_group_username = os.getenv("GROUP_USERNAME", GROUP_LINK).strip()
+GROUP_USERNAME = "@" + _raw_group_username.rstrip("/").split("/")[-1].lstrip("@") if "t.me/" in _raw_group_username or _raw_group_username.startswith("http") else _raw_group_username
 SUPPORT_LINK = os.getenv("SUPPORT_LINK", "https://t.me/amanjee7568")
 
 ADMIN_IDS = _parse_admin_ids(os.getenv("ADMIN_IDS", "9234906001"))
@@ -47,7 +50,8 @@ DB_FILE = os.getenv("DB_FILE", "fmea_database.db")
 TIMEZONE = os.getenv("TIMEZONE", "Asia/Kolkata")
 
 BOT_NAME = os.getenv("BOT_NAME", "Free Money 💰 Earning Adda")
-BOT_USERNAME = os.getenv("BOT_USERNAME", "@FMEAbot")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "@FMEAN_BOT")
+BOT_LINK = os.getenv("BOT_LINK", f"https://t.me/{BOT_USERNAME.lstrip('@')}")
 BOT_VERSION = os.getenv("BOT_VERSION", "2.2")
 
 REFERRAL_BONUS = int(os.getenv("REFERRAL_BONUS", "10"))

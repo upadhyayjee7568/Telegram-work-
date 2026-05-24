@@ -16,7 +16,7 @@ import pytz
 from telegram import Update, Bot
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, filters, ContextTypes, ConversationHandler
+    MessageHandler, ChatMemberHandler, filters, ContextTypes, ConversationHandler
 )
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
@@ -44,10 +44,7 @@ logger = logging.getLogger(__name__)
 
 IST = pytz.timezone(TIMEZONE)
 
- codex/set-bot_token-environment-variable-jehkcs
 
- codex/set-bot_token-environment-variable-3kjrzt
- main
 FAQ_RESPONSES = {
     "how to earn": "Start with freelancing, affiliate, and skill-based methods. Avoid guaranteed-income scams.",
     "is it free": "Yes, bot usage is free. We only share guidance and verified opportunities.",
@@ -55,11 +52,8 @@ FAQ_RESPONSES = {
     "withdraw": "This bot shares earning guidance. It does not hold money/wallet balances.",
 }
 
- codex/set-bot_token-environment-variable-jehkcs
 
 
- main
- main
 async def _on_startup(app: Application) -> None:
     """Ensure long-polling can start by removing any existing webhook."""
     try:
@@ -83,7 +77,58 @@ async def check_membership(bot: Bot, user_id: int) -> bool:
         member = await bot.get_chat_member(CHANNEL_USERNAME, user_id)
         return member.status not in ['left', 'kicked']
     except:
-        return True  # If can't check, allow access
+        return False
+
+async def check_group_membership(bot: Bot, user_id: int) -> bool:
+    try:
+        member = await bot.get_chat_member(GROUP_USERNAME, user_id)
+        return member.status not in ['left', 'kicked']
+    except:
+        return False
+
+async def _onboarding_status(bot: Bot, user_id: int) -> tuple[bool, bool]:
+    in_channel = await check_membership(bot, user_id)
+    in_group = await check_group_membership(bot, user_id)
+    return in_channel, in_group
+
+async def send_onboarding_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    pending = []
+    if not in_channel:
+        pending.append("1) Channel join karo")
+    if in_channel and not in_group:
+        pending.append("2) Group join karo")
+    if in_channel and in_group:
+        pending.append("3) Bot start complete ✅")
+    text = (
+        "🚫 *Access Restricted*\n\n"
+        "Bot use karne ke liye yeh process complete karna mandatory hai:\n"
+        f"• 1) Channel: {CHANNEL_LINK}\n"
+        f"• 2) Group: {GROUP_LINK}\n"
+        f"• 3) Bot: {BOT_LINK}\n\n"
+        f"⏳ *Pending:* {' | '.join(pending) if pending else 'None'}"
+    )
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("👥 Join Group", url=GROUP_LINK)],
+        [InlineKeyboardButton("🤖 Open Bot", url=BOT_LINK)],
+        [InlineKeyboardButton("✅ Verify", callback_data="verify_join")],
+    ])
+    if update.message:
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+    elif update.callback_query:
+        await update.callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+
+async def enforce_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user = update.effective_user
+    if user and is_admin(user.id, user.username):
+        return True
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    if in_channel and in_group:
+        return True
+    await send_onboarding_notice(update, context)
+    return False
 
 async def send_force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ask user to join channel first"""
@@ -113,6 +158,10 @@ async def send_force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    if not (in_channel and in_group):
+        await send_onboarding_notice(update, context)
+        return
     
     # Handle referral
     referred_by = None
@@ -220,6 +269,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     data = query.data
     update_last_active(user.id)
+    if data != "verify_join" and not is_admin(user.id, user.username):
+        if not await enforce_onboarding(update, context):
+            return
     
     # ── USER CALLBACKS ──────────────────────────
     
@@ -390,16 +442,15 @@ _Tap link to copy_ 👆
         )
     
     elif data == "verify_join":
-        is_member = await check_membership(context.bot, user.id)
-        if is_member:
+        in_channel, in_group = await _onboarding_status(context.bot, user.id)
+        if in_channel and in_group:
             await query.message.edit_text(
-                "✅ *Verification Successful!*\n\nChannel join karne ke liye thanks! 🎉\n\n"
-                "Ab aap bot use kar sakte hain.",
+                "✅ *Verification Successful!*\n\nChannel + Group verification complete! 🎉\n\nAb aap bot use kar sakte hain.",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
             )
         else:
-            await query.answer("❌ Abhi bhi join nahi kiya! Pehle channel join karo.", show_alert=True)
+            await send_onboarding_notice(update, context)
     
     # ── ADMIN CALLBACKS ──────────────────────────────────────
     
@@ -810,7 +861,42 @@ _Tap link to copy_ 👆
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     message = update.message
+    if message is None:
+        return
     text = message.text if message.text else ""
+
+    if message.chat.type == "channel":
+        return
+
+    if message.chat.type in ("group", "supergroup"):
+        if text and not text.startswith("/"):
+            try:
+                await message.reply_text(f"Detailed help ke liye bot open karein: {BOT_LINK}")
+            except:
+                pass
+
+    # Group/channel moderation for abusive words
+    if message.chat.type in ("group", "supergroup"):
+        if not is_admin(user.id, user.username) and text and _contains_blocked_words(text):
+            try:
+                await message.delete()
+            except:
+                pass
+            try:
+                await context.bot.ban_chat_member(message.chat.id, user.id)
+            except Exception as e:
+                logger.warning(f"Unable to ban abusive user {user.id}: {e}")
+            block_user(user.id)
+            for admin_id in ADMIN_IDS:
+                try:
+                    await context.bot.send_message(
+                        admin_id,
+                        f"🚫 User blocked from group/channel context.\nUser: `{user.id}` (@{user.username})\nMessage: {text}\n\nUnblock flow: user sends /unbanrequest in bot DM, then admin uses /approveunban.",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except:
+                    pass
+            return
     
     update_last_active(user.id)
     
@@ -822,6 +908,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN
         )
         return
+
+    # Force onboarding flow only in private bot chat
+    if message.chat.type == "private":
+        in_channel, in_group = await _onboarding_status(context.bot, user.id)
+        if not (in_channel and in_group) and not is_admin(user.id, user.username):
+            await send_onboarding_notice(update, context)
+            return
     
     # Admin input handling
     if is_admin(user.id, user.username):
@@ -998,14 +1091,26 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
         return
 
-    # Regular user - show menu
+    # Regular user: try quick answer first in private chat
+    if message.chat.type == "private" and text:
+        low = text.lower()
+        for k, v in FAQ_RESPONSES.items():
+            if k in low:
+                await message.reply_text(
+                    f"✅ *Quick Answer:*\n{v}",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
+                )
+                return
     await message.reply_text(
-        f"👋 *Kya chahiye aapko?*\n\nNeeche se option choose karo:",
+        "👋 *Kya chahiye aapko?*\n\nNeeche se option choose karo:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
     )
 
 async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await enforce_onboarding(update, context):
+        return
     context.user_data['awaiting_user_question'] = True
     await update.message.reply_text(
         "❓ Apna question type kijiye. Genuine jawab diya jayega; complex case admin ko forward hoga.",
@@ -1034,10 +1139,126 @@ async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     close_user_question(qid, reply_text)
     await update.message.reply_text(f"✅ Replied to question #{qid}")
 
+async def setwelcome_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.message.reply_text("Usage: /setwelcome <welcome text with {name}>")
+        return
+    set_setting("channel_welcome_text", text)
+    await update.message.reply_text("✅ Channel welcome text updated.")
+
+async def setfeatures_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.message.reply_text("Usage: /setfeatures <features text>")
+        return
+    set_setting("channel_features_text", text)
+    await update.message.reply_text("✅ Channel features text updated.")
+
+async def setbadwords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    words = " ".join(context.args).strip().lower()
+    if not words:
+        await update.message.reply_text("Usage: /setbadwords word1,word2,word3")
+        return
+    set_setting("blocked_words", words)
+    await update.message.reply_text("✅ Blocked words list updated.")
+
+async def unban_request_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    reason = " ".join(context.args).strip()
+    if not reason:
+        await update.message.reply_text("Usage: /unbanrequest <clear reason in DM>")
+        return
+    request_id = add_unban_request(user.id, user.username, reason)
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_message(admin_id, f"🆕 Unban request #{request_id}\nUser: `{user.id}` (@{user.username})\nReason: {reason}", parse_mode=ParseMode.MARKDOWN)
+        except:
+            pass
+    await update.message.reply_text(f"✅ Unban request submitted. Request ID: {request_id}")
+
+async def review_unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    pending = get_pending_unban_requests(20)
+    if not pending:
+        await update.message.reply_text("No pending unban requests.")
+        return
+    lines = ["🧾 Pending unban requests:"]
+    for item in pending:
+        lines.append(f"#{item['id']} | user {item['user_id']} (@{item['username']})")
+        lines.append(f"Reason: {item['reason']}")
+    lines.append("\nApprove with: /approveunban <request_id>")
+    await update.message.reply_text("\n".join(lines))
+
+async def approve_unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: /approveunban <request_id>")
+        return
+    try:
+        request_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Invalid request_id")
+        return
+    req = get_unban_request(request_id)
+    if not req or req['status'] != 'pending':
+        await update.message.reply_text("Request not found/pending.")
+        return
+    approve_unban_request(request_id, user.id)
+    unblock_user(req['user_id'])
+    await update.message.reply_text(f"✅ User {req['user_id']} unblocked.")
+
+async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cmu = update.chat_member
+    if cmu is None:
+        return
+    old_status = cmu.old_chat_member.status
+    new_status = cmu.new_chat_member.status
+    if old_status in ("left", "kicked") and new_status in ("member", "restricted"):
+        user = cmu.new_chat_member.user
+        welcome_text = (get_setting("channel_welcome_text") or "🎉 Welcome {name}!").format(name=user.first_name)
+        features_text = get_setting("channel_features_text") or ""
+        final_text = (
+            f"{welcome_text}\n\n"
+            f"{features_text}\n\n"
+            f"👥 Pehle group me active rahiye, phir bot use karein:\n{BOT_LINK}\n\n"
+            "💬 Genuine demand ke liye /ask use karein."
+        )
+        try:
+            await context.bot.send_message(chat_id=cmu.chat.id, text=final_text, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            logger.warning(f"Failed to send welcome message in chat {cmu.chat.id}: {e}")
+
+def _contains_blocked_words(text: str) -> bool:
+    blocked = (get_setting("blocked_words") or "").lower().split(",")
+    low = text.lower()
+    return any(word.strip() and word.strip() in low for word in blocked)
+
 # ── HELP COMMAND ──────────────────────────────────────────────
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not is_admin(user.id, user.username):
+        if not await enforce_onboarding(update, context):
+            return
     
     if is_admin(user.id, user.username):
         help_text = """
@@ -1049,6 +1270,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /stats - View statistics
 /settings - Bot settings
 /help - Show this help
+/setwelcome - Set channel welcome text
+/setfeatures - Set channel features text
+/setbadwords - Set abusive words list
+/reviewunban - View unban requests
+/approveunban - Approve unban request
 
 📌 *Admin Features:*
 ├ 📤 Broadcast messages
@@ -1068,6 +1294,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /referral - Your referral link
 /stats - Your stats
 /help - Help
+/unbanrequest - Request unblock with reason
 
 📌 *Features:*
 ├ 💸 Daily earning tips
@@ -1083,7 +1310,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
+    if not await enforce_onboarding(update, context):
+        return
     await update.message.reply_text(
         f"💰 *Free Money Earning Adda*\n\nMain Menu:",
         parse_mode=ParseMode.MARKDOWN,
@@ -1092,6 +1320,9 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not is_admin(user.id, user.username):
+        if not await enforce_onboarding(update, context):
+            return
     
     if is_admin(user.id, user.username):
         stats = get_user_stats()
@@ -1234,12 +1465,19 @@ def main():
     app.add_handler(CommandHandler("stats", stats_command))
     app.add_handler(CommandHandler("ask", ask_command))
     app.add_handler(CommandHandler("reply", reply_command))
+    app.add_handler(CommandHandler("setwelcome", setwelcome_command))
+    app.add_handler(CommandHandler("setfeatures", setfeatures_command))
+    app.add_handler(CommandHandler("setbadwords", setbadwords_command))
+    app.add_handler(CommandHandler("unbanrequest", unban_request_command))
+    app.add_handler(CommandHandler("reviewunban", review_unban_command))
+    app.add_handler(CommandHandler("approveunban", approve_unban_command))
     
     # Callback query handler
     app.add_handler(CallbackQueryHandler(button_handler))
     
     # Message handler
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+    app.add_handler(ChatMemberHandler(welcome_new_member, ChatMemberHandler.CHAT_MEMBER))
     
     # Error handler
     app.add_error_handler(error_handler)
