@@ -16,7 +16,7 @@ import pytz
 from telegram import Update, Bot
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, filters, ContextTypes, ConversationHandler
+    MessageHandler, ChatMemberHandler, filters, ContextTypes, ConversationHandler
 )
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
@@ -805,6 +805,29 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     message = update.message
     text = message.text if message.text else ""
+
+    # Group/channel moderation for abusive words
+    if message.chat.type in ("group", "supergroup"):
+        if not is_admin(user.id, user.username) and text and _contains_blocked_words(text):
+            try:
+                await message.delete()
+            except:
+                pass
+            try:
+                await context.bot.ban_chat_member(message.chat.id, user.id)
+            except Exception as e:
+                logger.warning(f"Unable to ban abusive user {user.id}: {e}")
+            block_user(user.id)
+            for admin_id in ADMIN_IDS:
+                try:
+                    await context.bot.send_message(
+                        admin_id,
+                        f"🚫 User blocked from group/channel context.\nUser: `{user.id}` (@{user.username})\nMessage: {text}\n\nUnblock flow: user sends /unbanrequest in bot DM, then admin uses /approveunban.",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except:
+                    pass
+            return
     
     update_last_active(user.id)
     
@@ -1028,6 +1051,114 @@ async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     close_user_question(qid, reply_text)
     await update.message.reply_text(f"✅ Replied to question #{qid}")
 
+async def setwelcome_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.message.reply_text("Usage: /setwelcome <welcome text with {name}>")
+        return
+    set_setting("channel_welcome_text", text)
+    await update.message.reply_text("✅ Channel welcome text updated.")
+
+async def setfeatures_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.message.reply_text("Usage: /setfeatures <features text>")
+        return
+    set_setting("channel_features_text", text)
+    await update.message.reply_text("✅ Channel features text updated.")
+
+async def setbadwords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    words = " ".join(context.args).strip().lower()
+    if not words:
+        await update.message.reply_text("Usage: /setbadwords word1,word2,word3")
+        return
+    set_setting("blocked_words", words)
+    await update.message.reply_text("✅ Blocked words list updated.")
+
+async def unban_request_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    reason = " ".join(context.args).strip()
+    if not reason:
+        await update.message.reply_text("Usage: /unbanrequest <clear reason in DM>")
+        return
+    request_id = add_unban_request(user.id, user.username, reason)
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_message(admin_id, f"🆕 Unban request #{request_id}\nUser: `{user.id}` (@{user.username})\nReason: {reason}", parse_mode=ParseMode.MARKDOWN)
+        except:
+            pass
+    await update.message.reply_text(f"✅ Unban request submitted. Request ID: {request_id}")
+
+async def review_unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    pending = get_pending_unban_requests(20)
+    if not pending:
+        await update.message.reply_text("No pending unban requests.")
+        return
+    lines = ["🧾 Pending unban requests:"]
+    for item in pending:
+        lines.append(f"#{item['id']} | user {item['user_id']} (@{item['username']})")
+        lines.append(f"Reason: {item['reason']}")
+    lines.append("\nApprove with: /approveunban <request_id>")
+    await update.message.reply_text("\n".join(lines))
+
+async def approve_unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Access denied")
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: /approveunban <request_id>")
+        return
+    try:
+        request_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Invalid request_id")
+        return
+    req = get_unban_request(request_id)
+    if not req or req['status'] != 'pending':
+        await update.message.reply_text("Request not found/pending.")
+        return
+    approve_unban_request(request_id, user.id)
+    unblock_user(req['user_id'])
+    await update.message.reply_text(f"✅ User {req['user_id']} unblocked.")
+
+async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cmu = update.chat_member
+    if cmu is None:
+        return
+    old_status = cmu.old_chat_member.status
+    new_status = cmu.new_chat_member.status
+    if old_status in ("left", "kicked") and new_status in ("member", "restricted"):
+        user = cmu.new_chat_member.user
+        welcome_text = (get_setting("channel_welcome_text") or "🎉 Welcome {name}!").format(name=user.first_name)
+        features_text = get_setting("channel_features_text") or ""
+        final_text = f"{welcome_text}\n\n{features_text}\n\n💬 Genuine demand ke liye /ask use karein."
+        try:
+            await context.bot.send_message(chat_id=cmu.chat.id, text=final_text, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            logger.warning(f"Failed to send welcome message in chat {cmu.chat.id}: {e}")
+
+def _contains_blocked_words(text: str) -> bool:
+    blocked = (get_setting("blocked_words") or "").lower().split(",")
+    low = text.lower()
+    return any(word.strip() and word.strip() in low for word in blocked)
+
 # ── HELP COMMAND ──────────────────────────────────────────────
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1043,6 +1174,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /stats - View statistics
 /settings - Bot settings
 /help - Show this help
+/setwelcome - Set channel welcome text
+/setfeatures - Set channel features text
+/setbadwords - Set abusive words list
+/reviewunban - View unban requests
+/approveunban - Approve unban request
 
 📌 *Admin Features:*
 ├ 📤 Broadcast messages
@@ -1062,6 +1198,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /referral - Your referral link
 /stats - Your stats
 /help - Help
+/unbanrequest - Request unblock with reason
 
 📌 *Features:*
 ├ 💸 Daily earning tips
@@ -1228,12 +1365,19 @@ def main():
     app.add_handler(CommandHandler("stats", stats_command))
     app.add_handler(CommandHandler("ask", ask_command))
     app.add_handler(CommandHandler("reply", reply_command))
+    app.add_handler(CommandHandler("setwelcome", setwelcome_command))
+    app.add_handler(CommandHandler("setfeatures", setfeatures_command))
+    app.add_handler(CommandHandler("setbadwords", setbadwords_command))
+    app.add_handler(CommandHandler("unbanrequest", unban_request_command))
+    app.add_handler(CommandHandler("reviewunban", review_unban_command))
+    app.add_handler(CommandHandler("approveunban", approve_unban_command))
     
     # Callback query handler
     app.add_handler(CallbackQueryHandler(button_handler))
     
     # Message handler
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+    app.add_handler(ChatMemberHandler(welcome_new_member, ChatMemberHandler.CHAT_MEMBER))
     
     # Error handler
     app.add_error_handler(error_handler)
