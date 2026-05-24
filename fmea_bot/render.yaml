@@ -15,6 +15,11 @@ services:
       - key: ENABLE_BOT_THREAD
         value: "true"
 
+ codex/set-bot_token-environment-variable
+      - key: ENABLE_BOT_THREAD
+        value: "true"
+
+ main
  main
       - key: BOT_TOKEN
         sync: false
