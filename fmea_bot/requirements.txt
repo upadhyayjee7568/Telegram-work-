@@ -1,0 +1,6 @@
+python-telegram-bot==20.7
+apscheduler>=3.10.0
+python-dotenv>=1.0.0
+aiofiles>=23.0.0
+pytz>=2023.3
+flask>=3.0.0
