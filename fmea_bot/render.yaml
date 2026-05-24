@@ -23,3 +23,30 @@ services:
         value: "@amanjee7568,@amanjee"
       - key: TIMEZONE
         value: Asia/Kolkata
+< codex/update-telegram-bot-and-deploy-to-github-v2p6r3
+=
+
+  - type: worker
+    name: fmea-telegram-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    autoDeploy: true
+    rootDir: fmea_bot
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: CHANNEL_USERNAME
+        value: https://t.me/FMEA1237802VHKV
+      - key: CHANNEL_LINK
+        value: https://t.me/FMEA1237802VHKV
+      - key: SUPPORT_LINK
+        value: https://t.me/amanjee7568
+      - key: ADMIN_IDS
+        value: 9234906001
+      - key: ADMIN_USERNAMES
+        value: "@amanjee7568,@amanjee"
+      - key: TIMEZONE
+        value: Asia/Kolkata
+> main

@@ -17,6 +17,10 @@
 
 
 ## One-click cloud deploy
+< codex/update-telegram-bot-and-deploy-to-github-v2p6r3
 - Render Blueprint create karte waqt **Blueprint Path blank** chhodein (root `render.yaml` auto pick hoga).
 - Agar manual dena ho to exact `render.yaml` likhein.
+=
+- Render Blueprint use karein: `fmea_bot/render.yaml`
+> main
 - Sirf `BOT_TOKEN` secret set karna hoga.
