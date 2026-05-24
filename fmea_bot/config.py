@@ -51,6 +51,7 @@ TIMEZONE = os.getenv("TIMEZONE", "Asia/Kolkata")
 
 BOT_NAME = os.getenv("BOT_NAME", "Free Money 💰 Earning Adda")
 BOT_USERNAME = os.getenv("BOT_USERNAME", "@FMEAN_BOT")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "@FMEAbot")
 BOT_LINK = os.getenv("BOT_LINK", f"https://t.me/{BOT_USERNAME.lstrip('@')}")
 BOT_VERSION = os.getenv("BOT_VERSION", "2.2")
 
