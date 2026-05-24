@@ -79,6 +79,47 @@ async def check_membership(bot: Bot, user_id: int) -> bool:
     except:
         return True  # If can't check, allow access
 
+async def check_group_membership(bot: Bot, user_id: int) -> bool:
+    try:
+        member = await bot.get_chat_member(GROUP_USERNAME, user_id)
+        return member.status not in ['left', 'kicked']
+    except:
+        return False
+
+async def _onboarding_status(bot: Bot, user_id: int) -> tuple[bool, bool]:
+    in_channel = await check_membership(bot, user_id)
+    in_group = await check_group_membership(bot, user_id)
+    return in_channel, in_group
+
+async def send_onboarding_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    pending = []
+    if not in_channel:
+        pending.append("1) Channel join karo")
+    if in_channel and not in_group:
+        pending.append("2) Group join karo")
+    if in_channel and in_group:
+        pending.append("3) Bot start complete ✅")
+    text = (
+        "🚫 *Access Restricted*\n\n"
+        "Bot use karne ke liye yeh process complete karna mandatory hai:\n"
+        f"• 1) Channel: {CHANNEL_LINK}\n"
+        f"• 2) Group: {GROUP_LINK}\n"
+        f"• 3) Bot: {BOT_LINK}\n\n"
+        f"⏳ *Pending:* {' | '.join(pending) if pending else 'None'}"
+    )
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("👥 Join Group", url=GROUP_LINK)],
+        [InlineKeyboardButton("🤖 Open Bot", url=BOT_LINK)],
+        [InlineKeyboardButton("✅ Verify", callback_data="verify_join")],
+    ])
+    if update.message:
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+    elif update.callback_query:
+        await update.callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+
 async def send_force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ask user to join channel first"""
     keyboard = [
@@ -107,6 +148,10 @@ async def send_force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    if not (in_channel and in_group):
+        await send_onboarding_notice(update, context)
+        return
     
     # Handle referral
     referred_by = None
@@ -384,16 +429,15 @@ _Tap link to copy_ 👆
         )
     
     elif data == "verify_join":
-        is_member = await check_membership(context.bot, user.id)
-        if is_member:
+        in_channel, in_group = await _onboarding_status(context.bot, user.id)
+        if in_channel and in_group:
             await query.message.edit_text(
-                "✅ *Verification Successful!*\n\nChannel join karne ke liye thanks! 🎉\n\n"
-                "Ab aap bot use kar sakte hain.",
+                "✅ *Verification Successful!*\n\nChannel + Group verification complete! 🎉\n\nAb aap bot use kar sakte hain.",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_keyboard(CHANNEL_LINK, SUPPORT_LINK)
             )
         else:
-            await query.answer("❌ Abhi bhi join nahi kiya! Pehle channel join karo.", show_alert=True)
+            await send_onboarding_notice(update, context)
     
     # ── ADMIN CALLBACKS ──────────────────────────────────────
     
@@ -806,6 +850,23 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     text = message.text if message.text else ""
 
+ codex/fix-indentation-error-in-bot.py
+    if message.chat.type == "channel":
+        try:
+            await message.reply_text(f"Discussion ke liye group join karein: {GROUP_LINK}")
+        except:
+            pass
+        return
+
+    if message.chat.type in ("group", "supergroup"):
+        if text and not text.startswith("/"):
+            try:
+                await message.reply_text(f"Detailed help ke liye bot open karein: {BOT_LINK}")
+            except:
+                pass
+
+
+ main
     # Group/channel moderation for abusive words
     if message.chat.type in ("group", "supergroup"):
         if not is_admin(user.id, user.username) and text and _contains_blocked_words(text):
@@ -838,6 +899,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Bot abhi maintenance pe hai. Thodi der baad try karo.",
             parse_mode=ParseMode.MARKDOWN
         )
+        return
+
+    # Force onboarding flow before using bot features
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    if not (in_channel and in_group) and not is_admin(user.id, user.username):
+        await send_onboarding_notice(update, context)
         return
     
     # Admin input handling
