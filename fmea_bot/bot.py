@@ -44,6 +44,10 @@ logger = logging.getLogger(__name__)
 
 IST = pytz.timezone(TIMEZONE)
 
+ codex/set-bot_token-environment-variable-jehkcs
+
+ codex/set-bot_token-environment-variable-3kjrzt
+ main
 FAQ_RESPONSES = {
     "how to earn": "Start with freelancing, affiliate, and skill-based methods. Avoid guaranteed-income scams.",
     "is it free": "Yes, bot usage is free. We only share guidance and verified opportunities.",
@@ -51,6 +55,11 @@ FAQ_RESPONSES = {
     "withdraw": "This bot shares earning guidance. It does not hold money/wallet balances.",
 }
 
+ codex/set-bot_token-environment-variable-jehkcs
+
+
+ main
+ main
 async def _on_startup(app: Application) -> None:
     """Ensure long-polling can start by removing any existing webhook."""
     try:
