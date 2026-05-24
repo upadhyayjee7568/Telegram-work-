@@ -1137,8 +1137,7 @@ def main():
         hour, minute = map(int, time_str.split(':'))
         job_queue.run_daily(
             send_daily_update,
-            time=datetime.now(IST).replace(hour=hour, minute=minute, second=0).time(),
-            timezone=IST
+            time=datetime.now(IST).replace(hour=hour, minute=minute, second=0, microsecond=0).timetz(),
         )
     
     # Check scheduled posts every minute
@@ -1147,8 +1146,7 @@ def main():
     # Daily promo at 7 PM IST
     job_queue.run_daily(
         send_daily_promo,
-        time=datetime.now(IST).replace(hour=19, minute=0, second=0).time(),
-        timezone=IST
+        time=datetime.now(IST).replace(hour=19, minute=0, second=0, microsecond=0).timetz(),
     )
     
     print("✅ Bot started successfully!")
