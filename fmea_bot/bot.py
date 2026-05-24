@@ -1160,7 +1160,8 @@ def main():
     # Run the bot
     app.run_polling(
         allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True
+        drop_pending_updates=True,
+        stop_signals=None
     )
 
 if __name__ == "__main__":

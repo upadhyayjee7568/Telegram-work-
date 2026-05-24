@@ -11,6 +11,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+ codex/set-bot_token-environment-variable-liibyf
+      - key: ENABLE_BOT_THREAD
+        value: "true"
+
  codex/set-bot_token-environment-variable-3bs93b
       - key: ENABLE_BOT_THREAD
         value: "true"
@@ -31,6 +35,7 @@ services:
       - key: ENABLE_BOT_THREAD
         value: "true"
 
+ main
  main
  main
  main
