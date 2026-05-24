@@ -120,6 +120,15 @@ async def send_onboarding_notice(update: Update, context: ContextTypes.DEFAULT_T
     elif update.callback_query:
         await update.callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
 
+async def enforce_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user = update.effective_user
+    if user and is_admin(user.id, user.username):
+        return True
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    if in_channel and in_group:
+        return True
+    await send_onboarding_notice(update, context)
+    return False
 async def check_group_membership(bot: Bot, user_id: int) -> bool:
     try:
         member = await bot.get_chat_member(GROUP_USERNAME, user_id)
@@ -300,6 +309,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     data = query.data
     update_last_active(user.id)
+    if data != "verify_join" and not is_admin(user.id, user.username):
+        if not await enforce_onboarding(update, context):
+            return
     
     # ── USER CALLBACKS ──────────────────────────
     
@@ -1142,6 +1154,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await enforce_onboarding(update, context):
+        return
     context.user_data['awaiting_user_question'] = True
     await update.message.reply_text(
         "❓ Apna question type kijiye. Genuine jawab diya jayega; complex case admin ko forward hoga.",
@@ -1288,6 +1302,9 @@ def _contains_blocked_words(text: str) -> bool:
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not is_admin(user.id, user.username):
+        if not await enforce_onboarding(update, context):
+            return
     
     if is_admin(user.id, user.username):
         help_text = """
@@ -1339,7 +1356,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
+    if not await enforce_onboarding(update, context):
+        return
     await update.message.reply_text(
         f"💰 *Free Money Earning Adda*\n\nMain Menu:",
         parse_mode=ParseMode.MARKDOWN,
@@ -1348,6 +1366,9 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not is_admin(user.id, user.username):
+        if not await enforce_onboarding(update, context):
+            return
     
     if is_admin(user.id, user.username):
         stats = get_user_stats()
