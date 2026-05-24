@@ -10,6 +10,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+ codex/set-bot_token-environment-variable
+      - key: ENABLE_BOT_THREAD
+        value: "false"
+
+ main
   - type: worker
     name: fmea-telegram-bot
     env: python
@@ -20,6 +25,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+ codex/set-bot_token-environment-variable
+      - key: ENABLE_BOT_THREAD
+        value: "false"
+
+ main
       - key: BOT_TOKEN
         sync: false
       - key: CHANNEL_USERNAME
