@@ -44,6 +44,14 @@ logger = logging.getLogger(__name__)
 
 IST = pytz.timezone(TIMEZONE)
 
+async def _on_startup(app: Application) -> None:
+    """Ensure long-polling can start by removing any existing webhook."""
+    try:
+        await app.bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Existing webhook cleared before polling startup")
+    except Exception as e:
+        logger.warning(f"Unable to clear webhook before startup: {e}")
+
 # ── HELPER FUNCTIONS ──────────────────────────────────────────
 
 def is_admin(user_id: int, username: str | None = None) -> bool:
@@ -1109,7 +1117,7 @@ def main():
     init_database()
     
     # Create application
-    app = Application.builder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).post_init(_on_startup).build()
     
     # ── Register Handlers ──────────────────────────────────────
     
@@ -1137,8 +1145,7 @@ def main():
         hour, minute = map(int, time_str.split(':'))
         job_queue.run_daily(
             send_daily_update,
-            time=datetime.now(IST).replace(hour=hour, minute=minute, second=0).time(),
-            timezone=IST
+            time=datetime.now(IST).replace(hour=hour, minute=minute, second=0, microsecond=0).timetz(),
         )
     
     # Check scheduled posts every minute
@@ -1147,8 +1154,7 @@ def main():
     # Daily promo at 7 PM IST
     job_queue.run_daily(
         send_daily_promo,
-        time=datetime.now(IST).replace(hour=19, minute=0, second=0).time(),
-        timezone=IST
+        time=datetime.now(IST).replace(hour=19, minute=0, second=0, microsecond=0).timetz(),
     )
     
     print("✅ Bot started successfully!")
@@ -1162,7 +1168,8 @@ def main():
     # Run the bot
     app.run_polling(
         allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True
+        drop_pending_updates=True,
+        stop_signals=None
     )
 
 if __name__ == "__main__":
