@@ -1,0 +1,17 @@
+name: Python Compile Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile critical bot files
+        run: |
+          python -m py_compile fmea_bot/bot.py fmea_bot/run_render.py fmea_bot/database.py fmea_bot/keyboards.py fmea_bot/config.py
