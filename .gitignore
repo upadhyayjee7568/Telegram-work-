@@ -2,3 +2,25 @@
 __pycache__/
 *.pyc
 *.db
+
+# ⚠️ SECURITY: Never commit sensitive data!
+.env
+.env.local
+.env.*.local
+fmea_bot/.env
+fmea_bot/.env.local
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+fmea_bot.log
+
+# Database
+fmea_database.db
+*.sqlite
