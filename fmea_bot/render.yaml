@@ -9,6 +9,10 @@ services:
     healthCheckPath: /healthz
     rootDir: fmea_bot
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: ENABLE_BOT_THREAD
+        value: "true"
       - key: BOT_TOKEN
         sync: false
       - key: CHANNEL_USERNAME
