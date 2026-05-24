@@ -31,10 +31,25 @@ python bot.py
 ## Security
 - BOT token ko kabhi code/file me hardcode karke git me push na karein.
 - Agar token chat/history me share ho gaya ho to turant regenerate karein.
-<< codex/update-telegram-bot-and-deploy-to-github-fdh5b8
+< codex/update-telegram-bot-and-deploy-to-github-v2p6r3
+
+< codex/update-telegram-bot-and-deploy-to-github-fdh5b8
+> main
 
 
 ### Render plan error fix
 If you see `service type is not available for this plan`, this repo now uses a **web** service blueprint (not worker) compatible with lower plans.
-=======
->> main
+< codex/update-telegram-bot-and-deploy-to-github-v2p6r3
+
+
+### If you see YAML parse error with `<<` / `==` / `>>`
+That means Render synced an old conflicted commit.
+1. GitHub main branch me latest `render.yaml` open karke confirm karein.
+2. Render Blueprint page pe **Manual sync** karein.
+3. Agar same error rahe to old Blueprint delete karke naya Blueprint create karein (path blank ya `render.yaml`).
+4. New Blueprint banate waqt branch `main` select karein.
+5. Root `render.yaml` ka expected clean content single `web` service hona chahiye (no `worker` block, no merge markers).
+=
+=
+> main
+> main

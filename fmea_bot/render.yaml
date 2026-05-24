@@ -23,6 +23,8 @@ services:
         value: "@amanjee7568,@amanjee"
       - key: TIMEZONE
         value: Asia/Kolkata
+< codex/update-telegram-bot-and-deploy-to-github-v2p6r3
+=
 
   - type: worker
     name: fmea-telegram-bot
@@ -47,3 +49,4 @@ services:
         value: "@amanjee7568,@amanjee"
       - key: TIMEZONE
         value: Asia/Kolkata
+> main
