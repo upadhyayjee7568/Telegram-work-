@@ -44,6 +44,14 @@ logger = logging.getLogger(__name__)
 
 IST = pytz.timezone(TIMEZONE)
 
+async def _on_startup(app: Application) -> None:
+    """Ensure long-polling can start by removing any existing webhook."""
+    try:
+        await app.bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Existing webhook cleared before polling startup")
+    except Exception as e:
+        logger.warning(f"Unable to clear webhook before startup: {e}")
+
 # ── HELPER FUNCTIONS ──────────────────────────────────────────
 
 def is_admin(user_id: int, username: str | None = None) -> bool:
@@ -1109,7 +1117,7 @@ def main():
     init_database()
     
     # Create application
-    app = Application.builder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).post_init(_on_startup).build()
     
     # ── Register Handlers ──────────────────────────────────────
     
