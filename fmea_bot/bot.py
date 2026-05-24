@@ -120,6 +120,47 @@ async def send_onboarding_notice(update: Update, context: ContextTypes.DEFAULT_T
     elif update.callback_query:
         await update.callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
 
+async def check_group_membership(bot: Bot, user_id: int) -> bool:
+    try:
+        member = await bot.get_chat_member(GROUP_USERNAME, user_id)
+        return member.status not in ['left', 'kicked']
+    except:
+        return False
+
+async def _onboarding_status(bot: Bot, user_id: int) -> tuple[bool, bool]:
+    in_channel = await check_membership(bot, user_id)
+    in_group = await check_group_membership(bot, user_id)
+    return in_channel, in_group
+
+async def send_onboarding_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    pending = []
+    if not in_channel:
+        pending.append("1) Channel join karo")
+    if in_channel and not in_group:
+        pending.append("2) Group join karo")
+    if in_channel and in_group:
+        pending.append("3) Bot start complete ✅")
+    text = (
+        "🚫 *Access Restricted*\n\n"
+        "Bot use karne ke liye yeh process complete karna mandatory hai:\n"
+        f"• 1) Channel: {CHANNEL_LINK}\n"
+        f"• 2) Group: {GROUP_LINK}\n"
+        f"• 3) Bot: {BOT_LINK}\n\n"
+        f"⏳ *Pending:* {' | '.join(pending) if pending else 'None'}"
+    )
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("👥 Join Group", url=GROUP_LINK)],
+        [InlineKeyboardButton("🤖 Open Bot", url=BOT_LINK)],
+        [InlineKeyboardButton("✅ Verify", callback_data="verify_join")],
+    ])
+    if update.message:
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+    elif update.callback_query:
+        await update.callback_query.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+
 async def send_force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ask user to join channel first"""
     keyboard = [
@@ -902,6 +943,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not (in_channel and in_group) and not is_admin(user.id, user.username):
             await send_onboarding_notice(update, context)
             return
+    # Force onboarding flow before using bot features
+    in_channel, in_group = await _onboarding_status(context.bot, user.id)
+    if not (in_channel and in_group) and not is_admin(user.id, user.username):
+        await send_onboarding_notice(update, context)
+        return
     
     # Admin input handling
     if is_admin(user.id, user.username):
@@ -1227,6 +1273,7 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"👥 Pehle group me active rahiye, phir bot use karein:\n{BOT_LINK}\n\n"
             "💬 Genuine demand ke liye /ask use karein."
         )
+        final_text = f"{welcome_text}\n\n{features_text}\n\n💬 Genuine demand ke liye /ask use karein."
         try:
             await context.bot.send_message(chat_id=cmu.chat.id, text=final_text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
