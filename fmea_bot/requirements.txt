@@ -3,11 +3,4 @@ apscheduler>=3.10.0
 python-dotenv>=1.0.0
 aiofiles>=23.0.0
 pytz>=2023.3
-< codex/update-telegram-bot-and-deploy-to-github-v2p6r3
 flask>=3.0.0
-=
-<< codex/update-telegram-bot-and-deploy-to-github-fdh5b8
-flask>=3.0.0
-=
-> main
-> main
