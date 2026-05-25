@@ -95,6 +95,20 @@ def init_database():
             answered_at TEXT
         )
     ''')
+
+    # Unban requests queue
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS unban_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT,
+            reason TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            reviewed_by INTEGER,
+            created_at TEXT,
+            reviewed_at TEXT
+        )
+    ''')
     
     # Bot settings
     cursor.execute('''
@@ -113,6 +127,10 @@ def init_database():
         ('bot_status', 'active'),
         ('total_posts_sent', '0'),
         ('maintenance_mode', 'false'),
+        ('channel_welcome_enabled', 'true'),
+        ('channel_welcome_text', '🎉 Welcome {name}!\n\nFree Money Earning Adda me aapka swagat hai. Yahan aapko daily earning tips, verified methods, referral support aur admin help milegi.'),
+        ('channel_features_text', '✅ Features: Daily tips, earning methods, referral rewards, admin support, genuine query response.'),
+        ('blocked_words', 'abuse,badword,scam,spam'),
     ]
     
     for key, value in default_settings:
@@ -404,5 +422,58 @@ def close_user_question(question_id, admin_reply):
         SET status = 'answered', admin_reply = ?, answered_at = ?
         WHERE id = ?
     ''', (admin_reply, datetime.now().isoformat(), question_id))
+    conn.commit()
+    conn.close()
+
+# ── MODERATION / UNBAN REQUESTS ───────────────────────────
+
+def add_unban_request(user_id, username, reason):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''
+        INSERT INTO unban_requests (user_id, username, reason, created_at)
+        VALUES (?, ?, ?, ?)
+        ''',
+        (user_id, username, reason, datetime.now().isoformat()),
+    )
+    rid = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return rid
+
+def get_pending_unban_requests(limit=20):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''
+        SELECT * FROM unban_requests WHERE status = 'pending'
+        ORDER BY created_at ASC LIMIT ?
+        ''',
+        (limit,),
+    )
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def get_unban_request(request_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM unban_requests WHERE id = ?', (request_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def approve_unban_request(request_id, reviewed_by):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''
+        UPDATE unban_requests
+        SET status = 'approved', reviewed_by = ?, reviewed_at = ?
+        WHERE id = ?
+        ''',
+        (reviewed_by, datetime.now().isoformat(), request_id),
+    )
     conn.commit()
     conn.close()
