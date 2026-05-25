@@ -5,11 +5,13 @@ import asyncio
 import os
 import threading
 import traceback
+import fcntl
 from flask import Flask
 
 from bot import main as run_bot
 
 app = Flask(__name__)
+BOT_LOCK_FILE = "/tmp/fmea_telegram_bot.lock"
 
 
 @app.get("/")
@@ -40,8 +42,14 @@ def _start_bot() -> None:
 if __name__ == "__main__":
     enable_bot_thread = os.getenv("ENABLE_BOT_THREAD", "true").strip().lower() in {"1", "true", "yes", "on"}
     if enable_bot_thread:
-        t = threading.Thread(target=_start_bot, daemon=True)
-        t.start()
+        try:
+            lock_fp = open(BOT_LOCK_FILE, "w")
+            fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            t = threading.Thread(target=_start_bot, daemon=True)
+            t.start()
+            print("Bot thread started with exclusive local lock.")
+        except OSError:
+            print("Bot thread not started: another local process already holds bot lock.")
     else:
         print("ENABLE_BOT_THREAD is false; only HTTP health server will run.")
 
